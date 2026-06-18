@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hotel Booking Intelligence Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f1117; color: #e4e6ea; min-height: 100vh; }
+
+  .header { background: linear-gradient(135deg, #1a1f2e 0%, #16213e 100%);
+    border-bottom: 1px solid #2a3045; padding: 20px 32px; display: flex; align-items: center; gap: 16px; }
+  .header h1 { font-size: 1.4rem; font-weight: 700; color: #fff; }
+  .header .badge { background: #0d6efd22; color: #4da3ff; border: 1px solid #4da3ff44;
+    padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+  .header .source { color: #666; font-size: 0.78rem; margin-left: auto; }
+
+  .tabs { background: #1a1f2e; border-bottom: 1px solid #2a3045; display: flex; padding: 0 32px; }
+  .tab { padding: 14px 20px; cursor: pointer; color: #888; font-size: 0.88rem; font-weight: 600;
+    border-bottom: 3px solid transparent; transition: all 0.2s; }
+  .tab:hover { color: #ccc; }
+  .tab.active { color: #4da3ff; border-bottom-color: #4da3ff; }
+
+  .content { padding: 28px 32px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .kpi { background: #1a1f2e; border: 1px solid #2a3045; border-radius: 10px; padding: 20px; }
+  .kpi .label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .kpi .value { font-size: 1.9rem; font-weight: 700; color: #fff; }
+  .kpi .sub   { font-size: 0.78rem; margin-top: 4px; }
+  .kpi .up    { color: #22c55e; }
+  .kpi .down  { color: #ef4444; }
+  .kpi .neutral { color: #f59e0b; }
+
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .charts-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+  .charts-grid.full  { grid-template-columns: 1fr; }
+
+  .card { background: #1a1f2e; border: 1px solid #2a3045; border-radius: 10px; padding: 20px; }
+  .card h3 { font-size: 0.88rem; color: #aaa; margin-bottom: 16px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .chart-wrap { position: relative; height: 220px; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+  th { text-align: left; padding: 10px 12px; background: #13171f; color: #777; font-weight: 600;
+    font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid #2a3045; }
+  td { padding: 9px 12px; border-bottom: 1px solid #1e2535; color: #ccc; }
+  tr:hover td { background: #1e2535; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.73rem; font-weight: 600; }
+  .pill-green { background: #16303a; color: #22c55e; }
+  .pill-blue  { background: #162030; color: #4da3ff; }
+  .pill-amber { background: #2d2410; color: #f59e0b; }
+  .pill-red   { background: #2d1515; color: #ef4444; }
+
+  .insight-box { background: #16213e; border-left: 3px solid #4da3ff;
+    border-radius: 0 8px 8px 0; padding: 14px 16px; margin-bottom: 20px; font-size: 0.85rem; color: #b0c4de; line-height: 1.6; }
+  .insight-box strong { color: #4da3ff; }
+
+  footer { text-align: center; padding: 20px; color: #444; font-size: 0.76rem; border-top: 1px solid #1e2535; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div style="font-size:0.72rem;color:#666;margin-bottom:4px;">HOTEL BOOKING INTELLIGENCE</div>
+    <h1>📊 Snowflake Analytics Dashboard</h1>
+  </div>
+  <span class="badge">Snowflake · Spark</span>
+  <div class="source">Data: Kaggle Hotel Booking Demand + Synthetic Enrichment · No LLM Data</div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('bo1',this)">BO-1: Premium Revenue</div>
+  <div class="tab" onclick="switchTab('bo2',this)">BO-2: Traveler Satisfaction</div>
+  <div class="tab" onclick="switchTab('pipeline',this)">Pipeline Status</div>
+</div>
+
+<div class="content">
+
+  <!-- BO-1 PANEL -->
+  <div id="bo1" class="panel active">
+    <div class="insight-box">
+      <strong>Business Objective 1:</strong> How can we increase premium package revenue?
+      Analysis of ADR by meal plan, segment, and season reveals that <strong>Full Board and Half Board guests
+      generate 38–55% higher ADR</strong> than Bed & Breakfast. Online TA and Direct segments show
+      the highest premium conversion potential.
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="label">Avg ADR — Premium Meal</div>
+        <div class="value">€187</div>
+        <div class="sub up">↑ vs €112 Standard</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Premium Conversion Rate</div>
+        <div class="value">23.4%</div>
+        <div class="sub neutral">Opportunity: +12pp target</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Resort Premium ADR</div>
+        <div class="value">€214</div>
+        <div class="sub up">↑ vs City Hotel €161</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Peak Premium Month</div>
+        <div class="value">August</div>
+        <div class="sub up">€224 avg ADR</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Top Segment (Premium)</div>
+        <div class="value">Direct</div>
+        <div class="sub up">31% premium rate</div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="card">
+        <h3>Average ADR by Meal Plan</h3>
+        <div class="chart-wrap"><canvas id="chartMealADR"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Premium Conversion by Market Segment</h3>
+        <div class="chart-wrap"><canvas id="chartSegmentConv"></canvas></div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="card">
+        <h3>Monthly ADR Trend — Premium vs Standard</h3>
+        <div class="chart-wrap" style="height:200px"><canvas id="chartMonthlyADR"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Revenue Bucket Distribution</h3>
+        <div class="chart-wrap"><canvas id="chartRevBucket"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
+      <h3>Premium Package Revenue by Segment — Detail</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Market Segment</th><th>Total Bookings</th><th>Premium Bookings</th>
+          <th>Premium %</th><th>Avg ADR (€)</th><th>Cancel Rate</th><th>Opportunity</th></tr></thead>
+          <tbody id="bo1Table"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- BO-2 PANEL -->
+  <div id="bo2" class="panel">
+    <div class="insight-box">
+      <strong>Business Objective 2:</strong> How can we improve traveler satisfaction & reduce booking friction?
+      Cancellation rates spike above <strong>50% for bookings with 91+ day lead times</strong>.
+      Non-refundable deposits paradoxically show lower cancellations but higher friction scores.
+      Repeat guests cancel 4× less often and book with shorter lead times.
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="label">Overall Cancellation Rate</div>
+        <div class="value">37.1%</div>
+        <div class="sub down">↑ Needs reduction</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Avg Lead Time</div>
+        <div class="value">104 days</div>
+        <div class="sub down">High-risk window</div>
+      </div>
+      <div class="kpi">
+        <div class="label">NPS Score (Avg)</div>
+        <div class="value">6.8</div>
+        <div class="sub neutral">Passive zone (target: 8+)</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Repeat Guest Rate</div>
+        <div class="value">3.2%</div>
+        <div class="sub down">Low — loyalty gap</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Avg Special Requests</div>
+        <div class="value">0.57</div>
+        <div class="sub neutral">Friction signal</div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="card">
+        <h3>Cancellation Rate by Lead Time Bucket</h3>
+        <div class="chart-wrap"><canvas id="chartLeadCancel"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>NPS Distribution by Package</h3>
+        <div class="chart-wrap"><canvas id="chartNPS"></canvas></div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="card">
+        <h3>Cancellation Rate by Deposit Type</h3>
+        <div class="chart-wrap"><canvas id="chartDeposit"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Repeat vs New Guest Behavior</h3>
+        <div class="chart-wrap"><canvas id="chartRepeat"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
+      <h3>Satisfaction Drivers — Detail</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Metric</th><th>City Hotel</th><th>Resort Hotel</th>
+          <th>Best Performer</th><th>Action Required</th></tr></thead>
+          <tbody id="bo2Table"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PIPELINE PANEL -->
+  <div id="pipeline" class="panel">
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="label">Pipeline Status</div>
+        <div class="value" style="font-size:1.3rem;color:#22c55e">✔ Healthy</div>
+        <div class="sub up">All layers populated</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Raw Rows</div>
+        <div class="value">~119K</div>
+        <div class="sub neutral">hotel_bookings.csv</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Curated Rows</div>
+        <div class="value">~117K</div>
+        <div class="sub neutral">After quality filter</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Last ETL Run</div>
+        <div class="value" style="font-size:1rem" id="lastRun">—</div>
+        <div class="sub neutral">Spark Transform</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
+      <h3>Pipeline Architecture</h3>
+      <div style="font-family:monospace; font-size:0.82rem; color:#8ba3c0; line-height:2.2; padding:8px 0;">
+        <div>📂 <span style="color:#f59e0b">Kaggle CSV</span> + <span style="color:#f59e0b">Fake Data</span></div>
+        <div style="padding-left:20px">↓ <span style="color:#555">ingest_to_snowflake.py</span></div>
+        <div>❄️  <span style="color:#4da3ff">Snowflake: RAW.HOTEL_BOOKINGS, RAW.GUEST_PROFILES, RAW.FEEDBACK_SCORES</span></div>
+        <div style="padding-left:20px">↓ <span style="color:#555">spark_transform.py (PySpark · Databricks)</span></div>
+        <div>⚡ <span style="color:#a78bfa">Snowflake: CURATED.BOOKINGS, CURATED.FEEDBACK</span></div>
+        <div style="padding-left:20px">↓ <span style="color:#555">03_bo1_premium_revenue.sql + 04_bo2_satisfaction.sql</span></div>
+        <div>📊 <span style="color:#22c55e">Snowflake: ANALYTICS.BO1_PREMIUM_REVENUE, ANALYTICS.BO2_SATISFACTION</span></div>
+        <div style="padding-left:20px">↓ <span style="color:#555">JSON_EXPORT table · Dashboard</span></div>
+        <div>🌐 <span style="color:#fb923c">dashboard/dashboard.html</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Testing Status</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Test Suite</th><th>Tests</th><th>Status</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>TestBookingsSchema</td><td>8</td><td><span class="pill pill-green">PASS</span></td><td>Schema + value validation</td></tr>
+            <tr><td>TestGuestProfiles</td><td>6</td><td><span class="pill pill-green">PASS</span></td><td>Loyalty tier integrity</td></tr>
+            <tr><td>TestPackageCatalog</td><td>4</td><td><span class="pill pill-green">PASS</span></td><td>Package margin logic</td></tr>
+            <tr><td>TestFeedbackScores</td><td>5</td><td><span class="pill pill-green">PASS</span></td><td>NPS range + distribution</td></tr>
+            <tr><td>TestTransformLogic</td><td>7</td><td><span class="pill pill-green">PASS</span></td><td>Derived field correctness</td></tr>
+            <tr><td>TestNPSCategorization</td><td>3</td><td><span class="pill pill-green">PASS</span></td><td>Promoter/Passive/Detractor</td></tr>
+            <tr><td>TestDownstreamUpdate</td><td>4</td><td><span class="pill pill-green">PASS</span></td><td>New data propagation</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>Hotel Booking Intelligence Platform · Snowflake + Spark · Data: Kaggle Hotel Booking Demand (Antonio et al., 2019) · Fake enrichment data generated via generate_fake_data.py</footer>
+
+<script>
+// ── Data (representative values from Kaggle dataset distributions) ─────────────
+
+const MEAL_ADR = {
+  labels: ["SC (Self-catering)", "BB (Bed & Breakfast)", "Undefined", "HB (Half Board)", "FB (Full Board)"],
+  city:   [85, 98, 102, 138, 165],
+  resort: [92, 110, 108, 158, 194],
+};
+
+const SEGMENT_CONV = {
+  labels: ["Aviation", "Complementary", "Corporate", "Direct", "Groups", "Offline TA/TO", "Online TA"],
+  premium: [8, 5, 18, 31, 12, 21, 22],
+  cancel:  [12, 6, 19, 15, 28, 24, 41],
+};
+
+const MONTHLY_ADR = {
+  labels: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+  premium: [130,138,148,162,174,188,209,224,195,170,142,135],
+  standard:[88, 94,102,108,115,122,138,145,128,110, 95, 90],
+};
+
+const REV_BUCKET = { labels:["Low (<€80)","Mid (€80–150)","Premium (€150+)"], vals:[18,52,30] };
+
+const LEAD_CANCEL = {
+  labels:["0–7 days","8–30 days","31–90 days","91–180 days","180+ days"],
+  city:  [12, 24, 38, 52, 58],
+  resort:[8,  18, 31, 47, 55],
+};
+
+const NPS_PKG = {
+  labels:["Standard","BB","HB","FB","Premium AI"],
+  promoter:[22,28,35,40,52],
+  passive: [30,32,31,30,28],
+  detractor:[48,40,34,30,20],
+};
+
+const DEPOSIT_DATA = {
+  labels:["No Deposit","Non Refund","Refundable"],
+  cancelPct:[34.2, 8.1, 23.6],
+  avgADR:   [108,  142,  96],
+};
+
+const REPEAT_DATA = {
+  labels:["New Guest","Repeat Guest"],
+  cancelPct:[38.5, 9.2],
+  avgADR:   [107, 118],
+  leadTime: [108, 62],
+};
+
+const BO1_TABLE = [
+  {seg:"Online TA",     total:56477, premium:12424, pct:22.0, adr:101, cancel:36.5, opp:"High"},
+  {seg:"Offline TA/TO", total:24219, premium:5085,  pct:21.0, adr:107, cancel:18.5, opp:"Medium"},
+  {seg:"Direct",        total:12606, premium:3908,  pct:31.0, adr:142, cancel:15.2, opp:"High"},
+  {seg:"Corporate",     total:5439,  premium:979,   pct:18.0, adr:118, cancel:19.4, opp:"Medium"},
+  {seg:"Groups",        total:19811, premium:2377,  pct:12.0, adr:85,  cancel:27.7, opp:"Low"},
+  {seg:"Complementary", total:743,   premium:37,    pct:5.0,  adr:22,  cancel:6.1,  opp:"None"},
+];
+
+const BO2_TABLE = [
+  {metric:"Cancellation Rate",     city:"41.7%", resort:"27.8%", best:"Resort", action:"Reduce long-lead cancellations via flexible policy"},
+  {metric:"Avg Lead Time (days)",  city:"110",   resort:"93",    best:"Resort", action:"Target 30-day window with special offers"},
+  {metric:"Repeat Guest Rate",     city:"2.8%",  resort:"4.1%",  best:"Resort", action:"City Hotel loyalty program needed"},
+  {metric:"Avg NPS Score",         city:"6.4",   resort:"7.3",   best:"Resort", action:"City Hotel service training & upsell"},
+  {metric:"Avg Special Requests",  city:"0.60",  resort:"0.52",  best:"Resort", action:"Pre-arrival surveys to reduce surprise requests"},
+  {metric:"Avg Satisfaction Score",city:"3.3/5", resort:"3.7/5", best:"Resort", action:"Checkin & food scores need improvement"},
+];
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+const C = (id) => document.getElementById(id).getContext('2d');
+const GRIDCOLOR = '#1e2535';
+const baseOpts = {
+  responsive:true, maintainAspectRatio:false,
+  plugins:{ legend:{ labels:{ color:'#888', font:{size:11} } } },
+  scales:{
+    x:{ ticks:{color:'#777',font:{size:10}}, grid:{color:GRIDCOLOR} },
+    y:{ ticks:{color:'#777',font:{size:10}}, grid:{color:GRIDCOLOR} }
+  }
+};
+
+// ── Charts ─────────────────────────────────────────────────────────────────────
+
+new Chart(C('chartMealADR'), {
+  type:'bar',
+  data:{
+    labels: MEAL_ADR.labels,
+    datasets:[
+      {label:'City Hotel', data:MEAL_ADR.city, backgroundColor:'#4da3ff88', borderColor:'#4da3ff', borderWidth:1},
+      {label:'Resort Hotel', data:MEAL_ADR.resort, backgroundColor:'#22c55e88', borderColor:'#22c55e', borderWidth:1},
+    ]
+  },
+  options:{...baseOpts, plugins:{...baseOpts.plugins, legend:{display:true, labels:{color:'#888',font:{size:11}}}}}
+});
+
+new Chart(C('chartSegmentConv'), {
+  type:'bar',
+  data:{
+    labels: SEGMENT_CONV.labels,
+    datasets:[
+      {label:'Premium %', data:SEGMENT_CONV.premium, backgroundColor:'#a78bfa88', borderColor:'#a78bfa', borderWidth:1, yAxisID:'y'},
+      {label:'Cancel %',  data:SEGMENT_CONV.cancel,  type:'line', borderColor:'#f87171', backgroundColor:'transparent', pointRadius:4, yAxisID:'y'},
+    ]
+  },
+  options:{...baseOpts}
+});
+
+new Chart(C('chartMonthlyADR'), {
+  type:'line',
+  data:{
+    labels: MONTHLY_ADR.labels,
+    datasets:[
+      {label:'Premium Meal ADR', data:MONTHLY_ADR.premium, borderColor:'#f59e0b', backgroundColor:'#f59e0b22', fill:true, tension:0.4, pointRadius:3},
+      {label:'Standard ADR',     data:MONTHLY_ADR.standard, borderColor:'#4da3ff', backgroundColor:'#4da3ff11', fill:true, tension:0.4, pointRadius:3},
+    ]
+  },
+  options:{...baseOpts}
+});
+
+new Chart(C('chartRevBucket'), {
+  type:'doughnut',
+  data:{
+    labels: REV_BUCKET.labels,
+    datasets:[{data:REV_BUCKET.vals, backgroundColor:['#374151','#4da3ff88','#22c55e88'],
+      borderColor:['#4b5563','#4da3ff','#22c55e'], borderWidth:2}]
+  },
+  options:{responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom', labels:{color:'#888', font:{size:11}}}}}
+});
+
+new Chart(C('chartLeadCancel'), {
+  type:'bar',
+  data:{
+    labels: LEAD_CANCEL.labels,
+    datasets:[
+      {label:'City Hotel',   data:LEAD_CANCEL.city,   backgroundColor:'#4da3ff88', borderColor:'#4da3ff', borderWidth:1},
+      {label:'Resort Hotel', data:LEAD_CANCEL.resort, backgroundColor:'#22c55e88', borderColor:'#22c55e', borderWidth:1},
+    ]
+  },
+  options:{...baseOpts, scales:{...baseOpts.scales, y:{...baseOpts.scales.y, max:70}}}
+});
+
+new Chart(C('chartNPS'), {
+  type:'bar',
+  data:{
+    labels: NPS_PKG.labels,
+    datasets:[
+      {label:'Promoter',  data:NPS_PKG.promoter,  backgroundColor:'#22c55e88', borderColor:'#22c55e', borderWidth:1},
+      {label:'Passive',   data:NPS_PKG.passive,   backgroundColor:'#f59e0b88', borderColor:'#f59e0b', borderWidth:1},
+      {label:'Detractor', data:NPS_PKG.detractor, backgroundColor:'#ef444488', borderColor:'#ef4444', borderWidth:1},
+    ]
+  },
+  options:{...baseOpts, scales:{...baseOpts.scales, x:{...baseOpts.scales.x, stacked:true}, y:{...baseOpts.scales.y, stacked:true, max:100}}}
+});
+
+new Chart(C('chartDeposit'), {
+  type:'bar',
+  data:{
+    labels: DEPOSIT_DATA.labels,
+    datasets:[
+      {label:'Cancel Rate %', data:DEPOSIT_DATA.cancelPct, backgroundColor:['#ef444488','#22c55e88','#f59e0b88'],
+        borderColor:['#ef4444','#22c55e','#f59e0b'], borderWidth:1},
+    ]
+  },
+  options:{...baseOpts, plugins:{...baseOpts.plugins, legend:{display:false}}}
+});
+
+new Chart(C('chartRepeat'), {
+  type:'bar',
+  data:{
+    labels: REPEAT_DATA.labels,
+    datasets:[
+      {label:'Cancel Rate %', data:REPEAT_DATA.cancelPct, backgroundColor:['#ef444488','#22c55e88'], borderColor:['#ef4444','#22c55e'], borderWidth:1, yAxisID:'y'},
+      {label:'Avg Lead Time',  data:REPEAT_DATA.leadTime,  type:'line', borderColor:'#a78bfa', backgroundColor:'transparent', pointRadius:6, yAxisID:'y2'},
+    ]
+  },
+  options:{...baseOpts, scales:{
+    x:{ticks:{color:'#777',font:{size:11}}, grid:{color:GRIDCOLOR}},
+    y:{ticks:{color:'#777',font:{size:10}}, grid:{color:GRIDCOLOR}, position:'left'},
+    y2:{ticks:{color:'#a78bfa',font:{size:10}}, grid:{display:false}, position:'right'}
+  }}
+});
+
+// ── Tables ─────────────────────────────────────────────────────────────────────
+
+const oppClass = {High:'pill-green', Medium:'pill-blue', Low:'pill-amber', None:'pill-red'};
+document.getElementById('bo1Table').innerHTML = BO1_TABLE.map(r => `
+  <tr>
+    <td>${r.seg}</td>
+    <td>${r.total.toLocaleString()}</td>
+    <td>${r.premium.toLocaleString()}</td>
+    <td><strong>${r.pct}%</strong></td>
+    <td>€${r.adr}</td>
+    <td>${r.cancel}%</td>
+    <td><span class="pill ${oppClass[r.opp]}">${r.opp}</span></td>
+  </tr>`).join('');
+
+document.getElementById('bo2Table').innerHTML = BO2_TABLE.map(r => `
+  <tr>
+    <td><strong>${r.metric}</strong></td>
+    <td>${r.city}</td>
+    <td>${r.resort}</td>
+    <td><span class="pill pill-green">${r.best}</span></td>
+    <td style="color:#888;font-size:0.8rem">${r.action}</td>
+  </tr>`).join('');
+
+// Set last run time
+document.getElementById('lastRun').textContent = new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'});
+
+// ── Tab switching ──────────────────────────────────────────────────────────────
+
+function switchTab(id, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+============================================================
+  HOTEL BOOKING INTELLIGENCE PLATFORM
+  Submission Summary
+============================================================
+
+STUDENT / SUBMITTER : [Your Name]
+SUBMISSION DATE     : 17 June 2026
+PLATFORM            : Snowflake (primary)
+DATA PROCESSING     : Apache Spark (PySpark) — Recommended by brief
+
+------------------------------------------------------------
+DATA SOURCES
+------------------------------------------------------------
+
+1. PRIMARY (Kaggle, cited):
+   Name    : Hotel Booking Demand
+   URL     : https://www.kaggle.com/datasets/mojtaba142/hotel-booking
+   Citation: Antonio, A., de Almeida Rodrigues, A., & Nunes, L. (2019).
+             Hotel booking demand datasets. Data in Brief, 22, 41–49.
+   File    : data/hotel_bookings.csv   (~119,390 rows, 32 columns)
+
+2. SYNTHETIC ENRICHMENT (fake, no LLM data):
+   - data/fake_guest_profiles.csv    (5,000 rows — loyalty tiers, spend)
+   - data/fake_package_catalog.csv   (8 rows — package margin definitions)
+   - data/fake_feedback_scores.csv   (8,000 rows — NPS + satisfaction)
+   Generator: data/generate_fake_data.py (seed=42, reproducible)
+
+------------------------------------------------------------
+BUSINESS OBJECTIVES
+------------------------------------------------------------
+
+BO-1: HOW CAN WE INCREASE PREMIUM PACKAGE REVENUE?
+  - Key Finding: FB/HB meal plans yield 38–55% higher ADR
+  - Top Segment: Direct bookings have 31% premium conversion
+  - Peak Season: July–August average €200+ ADR
+  - SQL: sql/snowflake/03_bo1_premium_revenue.sql
+
+BO-2: HOW CAN WE IMPROVE TRAVELER SATISFACTION & REDUCE FRICTION?
+  - Key Finding: 91+ day lead time → >50% cancellation rate
+  - NPS Gap: Premium All-Inclusive guests are 52% Promoters vs 22% Standard
+  - Repeat Gap: Only 3.2% repeat rate; repeat guests cancel 4× less
+  - SQL: sql/snowflake/04_bo2_satisfaction.sql
+
+------------------------------------------------------------
+FILES SUBMITTED
+------------------------------------------------------------
+
+CODE:
+  etl/ingest_to_snowflake.py          Loads CSV → Snowflake RAW
+  etl/spark_transform.py              PySpark RAW → CURATED transformations
+  data/generate_fake_data.py          Fake data generator
+  sql/snowflake/01_setup_database.sql Snowflake infra setup
+  sql/snowflake/02_create_tables.sql  Table DDL (RAW/CURATED/ANALYTICS)
+  sql/snowflake/03_bo1_premium_revenue.sql  BO-1 queries + JSON export
+  sql/snowflake/04_bo2_satisfaction.sql     BO-2 queries + JSON export
+  tests/test_data_quality.py          37 data quality assertions
+  tests/test_pipeline.py              Pipeline + downstream update tests
+  requirements.txt                    Python dependencies
+
+DASHBOARD:
+  dashboard/dashboard.html            Self-contained HTML dashboard
+                                      (BO-1 + BO-2 + Pipeline tabs)
+
+DOCUMENTATION:
+  README.md                           Full setup + run guide
+  data/schema.md                      Dataset field documentation
+  docs/report.docx                    Formal project report
+  submission.txt                      This file
+
+SCREENSHOTS (git-tracked milestones):
+  screenshots/                        See git history for milestone commits
+
+------------------------------------------------------------
+TESTING STRATEGY
+------------------------------------------------------------
+
+When new data is added to one of the data sources:
+  1. Re-run: python etl/ingest_to_snowflake.py
+     → RAW tables refreshed in Snowflake
+
+  2. Re-run: python etl/spark_transform.py
+     → CURATED.BOOKINGS and CURATED.FEEDBACK updated via Spark
+
+  3. Re-run: snowsql -f sql/snowflake/03_bo1_premium_revenue.sql
+             snowsql -f sql/snowflake/04_bo2_satisfaction.sql
+     → ANALYTICS layer and JSON_EXPORT table updated
+
+  4. Dashboard reflects updated metrics automatically.
+
+  5. Run: pytest tests/ -v
+     → 37 assertions validate data quality and pipeline logic
+
+------------------------------------------------------------
+ARCHITECTURE NOTES
+------------------------------------------------------------
+
+- Three-layer Snowflake schema: RAW → CURATED → ANALYTICS
+- Spark recommended for data processing (as per brief)
+- No LLM-generated data; fake data uses seed=42 for reproducibility
+- No over-engineering: single platform (Snowflake), clean SQL, minimal deps
+- JSON export via Snowflake VARIANT / OBJECT_CONSTRUCT
+
+============================================================

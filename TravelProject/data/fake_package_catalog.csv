@@ -1,0 +1,9 @@
+pkg_id,package_name,base_price_eur,margin_pct,includes_breakfast,includes_spa,includes_transfer,min_nights
+PKG001,Standard Room,0,0.22,N,N,N,1
+PKG002,Breakfast Included,25,0.35,Y,N,N,1
+PKG003,Half Board,60,0.4,Y,N,N,2
+PKG004,Full Board,95,0.42,Y,N,N,2
+PKG005,Premium All-Inclusive,180,0.55,Y,Y,Y,3
+PKG006,Spa & Wellness,75,0.5,N,Y,N,2
+PKG007,Business Traveler,45,0.38,Y,N,Y,1
+PKG008,Romantic Getaway,120,0.48,Y,Y,N,2
